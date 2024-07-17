@@ -1,0 +1,9 @@
+[build]
+  bin = "./tmp/app"
+  cmd = "go build -o ./tmp/app ./cmd"
+  exclude_dir = ["tmp"]
+
+[run]
+  cmd = "./tmp/app"
+  watch_dir = ["."]
+  exclude_dir = ["tmp"]
