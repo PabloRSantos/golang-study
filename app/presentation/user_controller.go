@@ -4,7 +4,6 @@ import (
 	dto "go-api/app/domain/dtos"
 	service "go-api/app/services"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,17 +55,10 @@ func (uc *userController) SignIn(ctx *gin.Context) {
 }
 
 func (uc *userController) Update(ctx *gin.Context) {
-	userId, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		response := Response{
-			Message: "user id must be a number",
-		}
-		ctx.JSON(http.StatusBadRequest, response)
-		return
-	}
+	userId := ctx.GetUint("x-user-id")
 
 	var request dto.UpdateUserRequest
-	err = ctx.ShouldBind(&request)
+	err := ctx.ShouldBind(&request)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.NewErrorResponse(err))
 		return
@@ -79,4 +71,16 @@ func (uc *userController) Update(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusNoContent, nil)
+}
+
+func (uc *userController) GetUser(ctx *gin.Context) {
+	userId := ctx.GetUint("x-user-id")
+
+	user, err := uc.userService.GetUserById(userId)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, user)
 }

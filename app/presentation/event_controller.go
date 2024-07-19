@@ -10,12 +10,14 @@ import (
 )
 
 type eventController struct {
-	eventService service.EventService
+	eventService        service.EventService
+	subscriptionService service.SubscriptionService
 }
 
-func NewEventController(eventService service.EventService) eventController {
+func NewEventController(eventService service.EventService, subscriptionService service.SubscriptionService) eventController {
 	return eventController{
 		eventService,
+		subscriptionService,
 	}
 }
 
@@ -52,7 +54,7 @@ func (e *eventController) GetEventById(ctx *gin.Context) {
 		return
 	}
 
-	eventId, err := strconv.Atoi(id)
+	eventId, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		response := Response{
 			Message: "event id must be a number",
@@ -61,11 +63,81 @@ func (e *eventController) GetEventById(ctx *gin.Context) {
 		return
 	}
 
-	event, err := e.eventService.GetEventById(eventId)
+	event, err := e.eventService.GetEventById(uint(eventId))
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(err))
 		return
 	}
 
 	ctx.JSON(http.StatusOK, event)
+}
+
+func (e *eventController) GetEventUsers(ctx *gin.Context) {
+	id := ctx.Param("id")
+	if id == "" {
+		response := Response{
+			Message: "event id is required",
+		}
+		ctx.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	eventId, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		response := Response{
+			Message: "event id must be a number",
+		}
+		ctx.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	users, err := e.eventService.GetEventUsers(uint(eventId))
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, dto.NewErrorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, users)
+}
+
+func (e *eventController) Subscribe(ctx *gin.Context) {
+	userId := ctx.GetUint("x-user-id")
+
+	eventId, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response := Response{
+			Message: "event id must be a number",
+		}
+		ctx.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	err = e.subscriptionService.Subscribe(userId, uint(eventId))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusNoContent, nil)
+}
+
+func (e *eventController) Unsubscribe(ctx *gin.Context) {
+	userId := ctx.GetUint("x-user-id")
+
+	eventId, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		response := Response{
+			Message: "event id must be a number",
+		}
+		ctx.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	err = e.subscriptionService.Unsubscribe(userId, uint(eventId))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.NewErrorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusNoContent, nil)
 }

@@ -3,7 +3,7 @@ package infra
 import (
 	"errors"
 	"fmt"
-	domain "go-api/app/domain/models"
+	model "go-api/app/domain/models"
 
 	"gorm.io/gorm"
 )
@@ -18,16 +18,16 @@ func NewUserRepository(connection *gorm.DB) UserRepository {
 	}
 }
 
-func (ur *UserRepository) FindById(id uint) *domain.User {
-	var user domain.User
-	ur.connection.First(&user, id)
+func (ur *UserRepository) FindById(id uint) (*model.User, error) {
+	var user model.User
+	err := ur.connection.Preload("Events").First(&user, id).Error
 
-	return &user
+	return &user, err
 }
 
-func (ur *UserRepository) FindByEmail(email string) *domain.User {
-	var user domain.User
-	err := ur.connection.Where(&domain.User{Email: email}).First(&user).Error
+func (ur *UserRepository) FindByEmail(email string) *model.User {
+	var user model.User
+	err := ur.connection.Where(&model.User{Email: email}).First(&user).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -38,7 +38,7 @@ func (ur *UserRepository) FindByEmail(email string) *domain.User {
 	return &user
 }
 
-func (ur *UserRepository) Create(user *domain.User) error {
+func (ur *UserRepository) Create(user *model.User) error {
 	result := ur.connection.Create(&user)
 
 	if result.Error != nil {
@@ -49,9 +49,9 @@ func (ur *UserRepository) Create(user *domain.User) error {
 	return nil
 }
 
-func (ur *UserRepository) Update(user *domain.User) error {
+func (ur *UserRepository) Update(user *model.User) error {
 	result := ur.connection.Model(&user).Updates(
-		domain.User{
+		model.User{
 			Name:  user.Name,
 			Phone: user.Phone,
 		},

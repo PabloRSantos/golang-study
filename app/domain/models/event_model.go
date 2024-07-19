@@ -14,4 +14,6 @@ type Event struct {
 	CreatedAt   time.Time      `json:"createdAt"`
 	UpdatedAt   time.Time      `json:"updatedAt"`
 	DeletedAt   gorm.DeletedAt `json:"-"`
+
+	Users []User `gorm:"many2many:subscriptions"`
 }

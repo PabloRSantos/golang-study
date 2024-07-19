@@ -7,17 +7,19 @@ import (
 )
 
 type EventService struct {
-	repository infra.EventRepository
+	eventRepository        infra.EventRepository
+	subscriptionRepository infra.SubscriptionRepository
 }
 
-func NewEventService(repository infra.EventRepository) EventService {
+func NewEventService(eventRepository infra.EventRepository, subscriptionRepository infra.SubscriptionRepository) EventService {
 	return EventService{
-		repository: repository,
+		eventRepository,
+		subscriptionRepository,
 	}
 }
 
 func (eu *EventService) GetEvents() []model.Event {
-	return eu.repository.GetEvents()
+	return eu.eventRepository.GetEvents()
 }
 
 func (eu *EventService) CreateEvent(payload dto.CreateEventRequest) (dto.CreateEventResponse, error) {
@@ -27,7 +29,7 @@ func (eu *EventService) CreateEvent(payload dto.CreateEventRequest) (dto.CreateE
 		Date:        payload.Date,
 	}
 
-	err := eu.repository.CreateEvent(&event)
+	err := eu.eventRepository.CreateEvent(&event)
 
 	if err != nil {
 		return dto.CreateEventResponse{}, err
@@ -39,6 +41,32 @@ func (eu *EventService) CreateEvent(payload dto.CreateEventRequest) (dto.CreateE
 	return response, nil
 }
 
-func (eu *EventService) GetEventById(id int) (*model.Event, error) {
-	return eu.repository.GetEventById(id)
+func (eu *EventService) GetEventById(id uint) (dto.GetEventResponse, error) {
+	event, err := eu.eventRepository.GetEventById(id)
+	if err != nil {
+		return dto.GetEventResponse{}, err
+	}
+
+	subscriptions := eu.subscriptionRepository.CountByEvent(id)
+
+	response := dto.GetEventResponse{
+		Event:         *event,
+		Subscriptions: subscriptions,
+	}
+
+	return response, nil
+}
+
+func (eu *EventService) GetEventUsers(id uint) ([]model.User, error) {
+	event, err := eu.eventRepository.GetEventById(id)
+	if err != nil {
+		return []model.User{}, err
+	}
+
+	users, err := eu.eventRepository.GetEventUsers(event.ID)
+	if err != nil {
+		return []model.User{}, err
+	}
+
+	return users, nil
 }

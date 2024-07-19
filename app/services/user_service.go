@@ -35,6 +35,7 @@ func (us *UserService) SignUp(payload dto.SignUpRequest) error {
 	user := model.User{
 		Name:     payload.Name,
 		Email:    payload.Email,
+		Role:     model.USER_ROLE,
 		Phone:    payload.Phone,
 		Password: hashedPassword,
 	}
@@ -55,7 +56,12 @@ func (us *UserService) SignIn(payload dto.SignInRequest) (dto.SignInResponse, er
 		return dto.SignInResponse{}, fmt.Errorf("invalid credentials")
 	}
 
-	token, err := us.token.Sign(user.Email)
+	token, err := us.token.Sign(
+		model.TokenClaims{
+			ID:   user.ID,
+			Role: user.Role,
+		},
+	)
 	if err != nil {
 		return dto.SignInResponse{}, err
 	}
@@ -69,9 +75,9 @@ func (us *UserService) SignIn(payload dto.SignInRequest) (dto.SignInResponse, er
 }
 
 func (us *UserService) Update(id uint, payload dto.UpdateUserRequest) error {
-	user := us.repository.FindById(id)
-	if user == nil {
-		return errors.New("user not exists")
+	user, err := us.repository.FindById(id)
+	if err != nil {
+		return err
 	}
 
 	user.Name = payload.Name
@@ -79,4 +85,13 @@ func (us *UserService) Update(id uint, payload dto.UpdateUserRequest) error {
 	us.repository.Update(user)
 
 	return nil
+}
+
+func (us *UserService) GetUserById(id uint) (dto.GetUserResponse, error) {
+	user, err := us.repository.FindById(id)
+	if err != nil {
+		return dto.GetUserResponse{}, err
+	}
+
+	return dto.NewGetUserResponse(*user), nil
 }

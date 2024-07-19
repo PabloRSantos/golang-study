@@ -2,7 +2,7 @@ package infra
 
 import (
 	"fmt"
-	domain "go-api/app/domain/models"
+	model "go-api/app/domain/models"
 
 	"gorm.io/gorm"
 )
@@ -17,14 +17,14 @@ func NewEventRepository(connection *gorm.DB) EventRepository {
 	}
 }
 
-func (er *EventRepository) GetEvents() []domain.Event {
-	var events []domain.Event
+func (er *EventRepository) GetEvents() []model.Event {
+	var events []model.Event
 	er.connection.Find(&events)
 
 	return events
 }
 
-func (er *EventRepository) CreateEvent(event *domain.Event) error {
+func (er *EventRepository) CreateEvent(event *model.Event) error {
 	result := er.connection.Create(&event)
 
 	if result.Error != nil {
@@ -35,9 +35,16 @@ func (er *EventRepository) CreateEvent(event *domain.Event) error {
 	return nil
 }
 
-func (er *EventRepository) GetEventById(id int) (*domain.Event, error) {
-	var event domain.Event
+func (er *EventRepository) GetEventById(id uint) (*model.Event, error) {
+	var event model.Event
 	err := er.connection.First(&event, id).Error
 
 	return &event, err
+}
+
+func (er *EventRepository) GetEventUsers(id uint) ([]model.User, error) {
+	var event model.Event
+	err := er.connection.Preload("Users").First(&event, id).Error
+
+	return event.Users, err
 }

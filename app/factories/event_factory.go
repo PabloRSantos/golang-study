@@ -1,7 +1,6 @@
 package factory
 
 import (
-	domain "go-api/app/domain/models"
 	"go-api/app/infra"
 	"go-api/app/presentation"
 	service "go-api/app/services"
@@ -11,13 +10,27 @@ import (
 )
 
 func SetupEvent(server *gin.Engine, db *gorm.DB) {
-	db.AutoMigrate(&domain.Event{})
-
+	Token := infra.NewJwtAdapter()
 	EventRepository := infra.NewEventRepository(db)
-	EventService := service.NewEventService(EventRepository)
-	EventController := presentation.NewEventController(EventService)
+	SubscriptionRepository := infra.NewSubscriptionRepository(db)
+
+	EventService := service.NewEventService(EventRepository, SubscriptionRepository)
+	SubscriptionService := service.NewSubscriptionService(SubscriptionRepository)
+
+	EventController := presentation.NewEventController(EventService, SubscriptionService)
 
 	server.GET("/event/:id", EventController.GetEventById)
 	server.GET("/events", EventController.GetEvents)
-	server.POST("/event", EventController.CreateEvent)
+
+	AuthUserMiddleware := presentation.NewAuthMiddleware(Token, "USER")
+	protectedUsersRouter := server.Group("")
+	protectedUsersRouter.Use(AuthUserMiddleware.Verify)
+	protectedUsersRouter.POST("/event/:id/subscribe", EventController.Subscribe)
+	protectedUsersRouter.DELETE("/event/:id/unsubscribe", EventController.Unsubscribe)
+
+	AuthAdminMiddleware := presentation.NewAuthMiddleware(Token, "ADMIN")
+	protectedAdminsRouter := server.Group("")
+	protectedAdminsRouter.Use(AuthAdminMiddleware.Verify)
+	protectedAdminsRouter.GET("/event/:id/users", EventController.GetEventUsers)
+	protectedAdminsRouter.POST("/event", EventController.CreateEvent)
 }
